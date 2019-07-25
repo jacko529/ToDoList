@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Http\Request;
+use Illuminate\Routing\Router;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,19 +14,19 @@ use Illuminate\Http\Request;
 |
 */
 
-Route::middleware('auth:api')->get('/user', function (Request $request) {
-    return $request->user();
+$router->group(['prefix' => 'api/v1'], function () use ($router) {
+    $router->get('to-do',  ['uses' => 'toDoController@index']);
+
+    $router->get('to-do/{id}', ['uses' => 'toDoController@show']);
+
+    $router->post('to-do', ['uses' => 'toDoController@store']);
+
+    $router->delete('to-do/{id}', ['uses' => 'toDoController@destroy']);
+
+    $router->put('to-do/{id}', ['uses' => 'toDoController@update']);
 });
 
-$router->group(['prefix' => 'api'], function () use ($router) {
-    $router->get('to-do',  ['uses' => 'TeamController@showAllTeamInformation']);
-
-    $router->get('to-do/{id}', ['uses' => 'TeamController@showOneTeam']);
-
-    $router->post('to-do', ['uses' => 'TeamController@createTeam']);
-
-    $router->delete('to-do/{id}', ['uses' => 'TeamController@deleteTeam']);
-
-    $router->put('to-do/{id}', ['uses' => 'TeamController@updateTeam']);
+$router->fallback(function(){
+    return response()->json([
+        'message' => 'Page Not Found. If error persists, contact jack at 3SC'], 404);
 });
-

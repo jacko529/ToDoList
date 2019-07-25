@@ -2,66 +2,107 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ToDoRequest;
+use App\Http\Resources\ToDoListResource;
 use App\toDoList;
+use Illuminate\Database\DatabaseManager;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 
 class toDoController extends Controller
 {
 
-    private $toDoOdel;
     private $databaseManager;
 
-    public function __construct()
-    {
-        $this->toDoModel = new toDoList();
 
+    public function __construct(DatabaseManager $databaseManager)
+    {
+
+        $this->toDoModel = new toDoList();
+        $this->databaseManager = $databaseManager;
     }
+
     /**
      * Display a listing of the resource.
      *
-     * @return \Illuminate\Http\Response
      */
     public function index()
     {
         $allToDOItems = toDoList::all();
-        return response()->json($allToDOItems);
+
+        return (new ToDoListResource($allToDOItems))
+            ->response()
+            ->setStatusCode(200);
+
     }
 
     /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     * @throws \Exception
      */
-    public function store(Request $request)
+    public function store(ToDoRequest $request)
     {
-        $toDoModel = new toDoList();
-        $toDoModel->name
-        return toDoList::create($request->json()->all());
+
+        try{
+            $this->databaseManager->beginTransaction();
+            $createdResource = toDoList::create($request->json()->all());
+            $this->databaseManager->commit();
+        }
+        catch (ModelNotFoundException $ex) { // User not found
+            $this->databaseManager->rollback();
+            abort(422, 'Invalid model information');
+        } catch (\Exception $ex) { // Anything that went wrong
+            $this->databaseManager->rollback();
+            abort(500, 'Could not allocate the to do resource');
+        }
+
+        return (new ToDoListResource($createdResource))
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
      * Display the specified resource.
      *
      * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @return
      */
     public function show($id)
     {
         $individualToDoItem = toDoList::findOrFail($id);
-        return response()->json($individualToDoItem);
+        return (new ToDoListResource($individualToDoItem))
+                    ->response()
+                    ->setStatusCode(200);
     }
 
     /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @param $id
+     * @return
+     * @throws \Exception
      */
-    public function update(Request $request, $id)
+    public function update(ToDoRequest $request, $id)
     {
-        return toDoList::where('id', $id)->update($request->json()->all());
+
+        try{
+            $this->databaseManager->beginTransaction();
+            toDoList::where('id', $id)->update($request->json()->all());
+
+            $this->databaseManager->commit();
+        }
+        catch (ModelNotFoundException $ex) { // User not found
+            $this->databaseManager->rollback();
+           return response()->json( 'Invalid model information', 404 );
+        } catch (\Exception $ex) { // Anything that went wrong
+            $this->databaseManager->rollback();
+           return response()->json( 'Could not allocate the to do resource', 500);
+        }
+
+
+
+
+        return  response()->json('Updated Successfully', 201);
     }
 
     /**
@@ -73,6 +114,6 @@ class toDoController extends Controller
     public function destroy($id)
     {
         toDoList::findOrFail($id)->delete();
-        return response('Deleted Successfully', 200);
+        return response()->json('Deleted Successfully', 200);
     }
 }
