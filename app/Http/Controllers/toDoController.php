@@ -7,6 +7,7 @@ use App\Http\Resources\ToDoListResource;
 use App\toDoList;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class toDoController extends Controller
@@ -52,7 +53,12 @@ class toDoController extends Controller
         catch (ModelNotFoundException $ex) { // User not found
             $this->databaseManager->rollback();
             abort(422, 'Invalid model information');
-        } catch (\Exception $ex) { // Anything that went wrong
+        }
+        catch (QueryException $ex) { // Anything that went wrong
+            $this->databaseManager->rollback();
+            abort(422, 'Could not allocate the to do resource');
+        }
+        catch (\Exception $ex) { // Anything that went wrong
             $this->databaseManager->rollback();
             abort(500, 'Could not allocate the to do resource');
         }
@@ -98,9 +104,6 @@ class toDoController extends Controller
             $this->databaseManager->rollback();
            return response()->json( 'Could not allocate the to do resource', 500);
         }
-
-
-
 
         return  response()->json('Updated Successfully', 201);
     }
